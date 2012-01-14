@@ -4,7 +4,7 @@ import urllib
 import urllib2
 
 from asurepo_client.http import multipart_encode
-from asurepo.repo.metadata import DescriptiveMetadata
+from repo.metadata import DescriptiveMetadata
 import logging
 
 LOG = logging.getLogger(__name__)

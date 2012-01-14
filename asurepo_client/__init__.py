@@ -22,7 +22,7 @@ import zipfile
 from asurepo_client.rest import (Resource, Action, ResourceList,
     ResourceProperty, RelatedResource, MetadataProperty,
     ContentProperty)
-from asurepo.repo.metadata import DescriptiveMetadata
+from repo.metadata import DescriptiveMetadata
 
 LOG = logging.getLogger('asurepo.client')
 
