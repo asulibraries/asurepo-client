@@ -4,7 +4,6 @@ import urllib
 import urllib2
 
 from asurepo_client.http import multipart_encode
-from repo.metadata import DescriptiveMetadata
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -315,14 +314,12 @@ class MetadataProperty(object):
     def __get__(self, obj, objtype=None):
         url = get_property(obj.representation, self.propname)
         response = obj.api.open(url)
-        return DescriptiveMetadata.load(response)
+        return json.load(response)
 
     def __set__(self, obj, metadata):
         '''
         Submit a JSON metadata representation to @url.
         '''
-        
-        metadata = DescriptiveMetadata.wrap(metadata)
         data = metadata.dumps()
         headers = {'Content-Type': 'application/json'}
 
