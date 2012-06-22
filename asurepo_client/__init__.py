@@ -59,9 +59,9 @@ class BasicAuthAPI(BaseAPI):
     def create_opener(self):
         _, netloc, _, _, _, _ = urlparse.urlparse(self.apiroot)
         self.password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-        self.password_manager.add_password(None, netloc, 
+        self.password_manager.add_password(None, netloc,
                                            self.username, self.password)
-        
+
         handlers = [
                 poster.streaminghttp.StreamingHTTPHandler,
                 poster.streaminghttp.StreamingHTTPRedirectHandler,
@@ -101,7 +101,7 @@ class Collections(ResourceList):
         return self._create_new_resource(params)
 
 class Items(ResourceList):
-    
+
     def __init__(self, api, url):
         return super(Items, self).__init__(api, url, ref('Item'))
 
@@ -161,7 +161,7 @@ class RollbackAction(Action):
 def create_url_content(url, filename=None, opener=None):
     '''
     Utility function that creates content appropriate for assigning Attachment's
-    @content property (based on the content at @url).  If provided, a custom 
+    @content property (based on the content at @url).  If provided, a custom
     urllib2.OpenerDirector will be used to open the URL.
     '''
     openfun = urllib2.urlopen if opener is None else opener.open
@@ -174,8 +174,8 @@ def create_url_content(url, filename=None, opener=None):
 
 def create_content(fileobj, filename=None, filetype=None):
     '''
-    Utility method for creating content appropriate for assigning to 
-    Attribute's @content property.  This ensures that filename is specified 
+    Utility method for creating content appropriate for assigning to
+    Attribute's @content property.  This ensures that filename is specified
     (which Django needs to recognize a multipart/form-encoded part as a file)
     and does its best to guess the filetype if none is provided.
     '''

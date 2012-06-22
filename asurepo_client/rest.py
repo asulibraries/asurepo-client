@@ -21,7 +21,7 @@ def set_property(pmap, keys, val):
         keys = [keys]
 
     if len(keys) <= 0:
-        raise KeyError 
+        raise KeyError
     elif len(keys) > 1:
         pmap[keys[0]] = set_property({}, keys[1:], val)
     else:
@@ -47,7 +47,7 @@ def safe_urlencode(params):
 
 class Action(object):
     '''
-    Simple resource that stores an API reference and a URL and only needs to 
+    Simple resource that stores an API reference and a URL and only needs to
     implement a __call__ method (an appropriate call to it's URL).
     '''
     def __init__(self, api, url):
@@ -63,7 +63,7 @@ class Resource(object):
         self.api = api
         self.url = url
         self._representation = None
-        
+
     @property
     def representation(self):
         if not self._representation:
@@ -81,7 +81,7 @@ class Resource(object):
     def set_properties(self, **props):
         formdata = {}
         for propname, propvalue in props.items():
-            if not isinstance(ResourceProperty, 
+            if not isinstance(ResourceProperty,
                               getattr(self.__class__, propname)):
                 raise ValueError("Unrecognized property: %s" % propname)
             formdata['.'.join(propname)] = propvalue
@@ -145,7 +145,7 @@ class ResourceProperty(object):
     '''
     Property-style class for creating properties on Resource classes with some
     standard behaviors:
-     - 'get' looks up @propname in the Resource's representation and returns 
+     - 'get' looks up @propname in the Resource's representation and returns
         its value
      - 'set' submits a form field called @propname to the Resource's URL
         (via PUT)
@@ -154,7 +154,7 @@ class ResourceProperty(object):
       > class Person(Resource):
       >     first_name = ResourceProperty('firstname')
       >     last_name = ResourceProperty('lastname')
-      
+
       > p = Person(<api>, <person_url>)
       > p.first_name
         -> returns p.representation.first_name
@@ -166,7 +166,7 @@ class ResourceProperty(object):
         self.read_only = read_only
 
     def __get__(self, obj, objtype=None):
-        return get_property(obj.representation, self.propname)        
+        return get_property(obj.representation, self.propname)
 
     def __set__(self, obj, value):
         if self.read_only:
@@ -174,7 +174,7 @@ class ResourceProperty(object):
         formdata = {}
         formdata['.'.join(self.propname)] = value if value else ''
         data = safe_urlencode(formdata)
-        
+
         request = urllib2.Request(obj.url, data=data)
         request.get_method = lambda: 'PUT'
         response = obj.api.open(request)
@@ -210,7 +210,7 @@ class RelatedResource(object):
     Sample usage:
       class User(Resource):
          ...
-    
+
       class BlogPost(Resource):
          creator = RelatedResource('creator', User)
          ...
@@ -255,7 +255,7 @@ class RelatedResourceList(RelatedResource):
       > shamu.representation
         { ... , 'posts': 'http://foo.net/users/shamu/posts', ... }
       > shamu.posts
-        <Generic ResourceList of BlogPost items> 
+        <Generic ResourceList of BlogPost items>
     """
 
     def __get__(self, obj, objtype=None):
@@ -282,11 +282,11 @@ class ContentProperty(object):
 
     def __set__(self, obj, content):
         """
-        Encode and send multipart body containing @content in a part named 
+        Encode and send multipart body containing @content in a part named
         'content':
 
           - Local filelike objects created with open() work perfectly
-          - URL-based remote content can be created using the 
+          - URL-based remote content can be created using the
             create_url_content() utility method.
 
             >  a.content = create_url_content('http://www.example.com')
