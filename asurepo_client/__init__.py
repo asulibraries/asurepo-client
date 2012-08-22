@@ -6,18 +6,13 @@ repository via its REST API.
 import cookielib
 import filelike
 import httplib
-import json
 import logging
 import mimetypes
-import os
 import posixpath
 import poster
-import shutil
-import tempfile
 import urllib
 import urllib2
 import urlparse
-import zipfile
 
 from asurepo_client.rest import (Resource, Action, ResourceList,
     ResourceProperty, RelatedResource, MetadataProperty,
@@ -26,6 +21,7 @@ from asurepo_client.rest import (Resource, Action, ResourceList,
 LOG = logging.getLogger('asurepo.client')
 
 ref = lambda cls_name: '%s.%s' % (__name__, cls_name)
+
 
 #----------------{Main API entry point}----------------------
 class BaseAPI(Resource):
@@ -50,7 +46,9 @@ class BaseAPI(Resource):
     def __setstate__(self, state):
         self.__init__(state.get('apiroot'))
 
+
 class BasicAuthAPI(BaseAPI):
+
     def __init__(self, apiroot, username, password):
         self.username = username
         self.password = password
@@ -88,6 +86,7 @@ class BasicAuthAPI(BaseAPI):
 # add alias
 API = BasicAuthAPI
 
+
 #----------------{Resource list types}----------------------
 class Collections(ResourceList):
 
@@ -100,6 +99,7 @@ class Collections(ResourceList):
             params['description'] = description
         return self._create_new_resource(params)
 
+
 class Items(ResourceList):
 
     def __init__(self, api, url):
@@ -109,6 +109,7 @@ class Items(ResourceList):
         params = {'collection': collection_url} if collection_url else {}
         return self._create_new_resource(params)
 
+
 class Attachments(ResourceList):
 
     def __init__(self, api, url):
@@ -116,7 +117,7 @@ class Attachments(ResourceList):
 
     def new(self):
         # please do not touch the magic foobar
-        return self._create_new_resource({'foo':'bar'})
+        return self._create_new_resource({'foo': 'bar'})
 
 
 #----------------{Individual Resource types}----------------------
@@ -126,6 +127,7 @@ class Collection(Resource):
     description = ResourceProperty('description')
     persistent_url = ResourceProperty('persistent_url', read_only=True)
     items = RelatedResource('items', ref('Items'))
+
 
 class Item(Resource):
 
@@ -140,6 +142,7 @@ class Item(Resource):
     item_enabled = ResourceProperty('item_enabled')
     persistent_url = ResourceProperty('persistent_url', read_only=True)
 
+
 class Attachment(Resource):
     label = ResourceProperty('label')
     status = ResourceProperty('status')
@@ -148,21 +151,25 @@ class Attachment(Resource):
     content = ContentProperty('content')
     persistent_url = ResourceProperty('persistent_url', read_only=True)
 
+
 class CommitAction(Action):
     def __call__(self, force=False):
         data = urllib.urlencode({'force': 'true' if force else 'false'})
         response = self.api.open(self.url, data=data)
 
+
 class RollbackAction(Action):
     def __call__(self):
         response = self.api.open(self.url, data='')
 
+
 #-------------{Content creation helper functions}----------------
 def create_url_content(url, filename=None, opener=None):
     '''
-    Utility function that creates content appropriate for assigning Attachment's
-    @content property (based on the content at @url).  If provided, a custom
-    urllib2.OpenerDirector will be used to open the URL.
+    Utility function that creates content appropriate for assigning
+    Attachment's @content property (based on the content at @url).
+    If provided, a custom urllib2.OpenerDirector will be used to open
+    the URL.
     '''
     openfun = urllib2.urlopen if opener is None else opener.open
     fileobj = openfun(url)
@@ -171,6 +178,7 @@ def create_url_content(url, filename=None, opener=None):
 
     fileobj = filelike.wrappers.Buffer(fileobj)  # wrap for seek()
     return create_content(fileobj, filename=filename, filetype=filetype)
+
 
 def create_content(fileobj, filename=None, filetype=None):
     '''
@@ -183,6 +191,7 @@ def create_content(fileobj, filename=None, filetype=None):
     if not filetype and filename:
         filetype = mimetypes.guess_type(filename)[0]
     return {'filename': filename, 'filetype': filetype, 'fileobj': fileobj}
+
 
 def filename_from_url(url):
     _, _, path, _, _ = urlparse.urlsplit(url)

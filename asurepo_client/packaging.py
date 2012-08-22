@@ -73,7 +73,7 @@ class ItemPackager(object):
         return directory
 
     def write_zip(self, targetfile=None):
-        targetfile = targetfile or tempfile.mkstemp()
+        fd, targetfile = targetfile or tempfile.mkstemp()
         try:
             packagedir = tempfile.mkdtemp(prefix="package-")
             self.write_directory(packagedir)
