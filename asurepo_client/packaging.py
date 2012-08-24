@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 import tempfile
+import types
+import uuid
 import zipfile
 
 
@@ -48,15 +50,16 @@ class ItemPackager(object):
             att_struct.create_attachment(item)
         return item
 
-    def asJson(self):
+    def as_json(self):
         return {
             'label': self.label,
             'metadata': self.metadata,
             'status': self.status,
-            'embargo_date': self.embargo_date,
+            'embargo_date': self.embargo_date.isoformat()
+                            if self.embargo_date else None,
             'enabled': self.enabled,
-            'attachments': [att.asJson() for att in self.attachments]
-            }
+            'attachments': [att.as_json() for att in self.attachments]
+        }
 
     def write_directory(self, directory=None):
         '''
@@ -65,7 +68,7 @@ class ItemPackager(object):
         '''
         if not directory:
             directory = tempfile.mkdtemp(prefix="package-")
-        manifest = self.asJson()
+        manifest = self.as_json()
         manifest['attachments'] = [att.write_directory(directory)
                                    for att in self.attachments]
         manifest_path = os.path.join(directory, 'manifest.json')
@@ -85,15 +88,24 @@ class ItemPackager(object):
 
 class AttachmentPackager(object):
 
-    def __init__(self, label=None, metadata=None, content=None):
+    def __init__(self, label=None, metadata=None, fileobj=None, filename=None):
         self.label = label
         self.metadata = metadata
-        self.content = content
+        self.fileobj = fileobj
+        if fileobj and not filename:
+            name = None
+            if (hasattr(fileobj, 'name') and
+                isinstance(fileobj.name, types.StringTypes)):
+                name = os.path.basename(fileobj.name)
+            self.filename = name if name else uuid.uuid4()
+        else:
+            self.filename = filename
 
     def validate_and_transform(self):
         # truncate object label if necessary
         if len(self.label) > 255:
-            self.metadata.setdefault('notes', []).append('Original title: %s' % self.label)
+            orig_title = 'Original title: %s' % self.label
+            self.metadata.setdefault('notes', []).append(orig_title)
             self.label = self.label[:252] + '...'
 
     def create_attachment(self, item):
@@ -112,27 +124,27 @@ class AttachmentPackager(object):
         Write content file to the given directory and return a dict describing
         the attachment, including the file it was written to.
         '''
-        filename = os.path.basename(self.content['filename'])
-        outpath = os.path.join(directory, filename)
-        if os.path.exists(outpath):
-            raise ValueError("The file %s already exists in the package directory" % outpath)
+        if self.fileobj:
+            outpath = os.path.join(directory, self.filename)
+            if os.path.exists(outpath):
+                raise ValueError(
+                    "The file %s already exists in the "
+                    "package directory." % outpath)
 
-        with open(outpath, 'wb') as out:
-            for chunk in iter(lambda: self.content['fileobj'].read(2 ** 16), ''):
-                out.write(chunk)
+            with open(outpath, 'wb') as out:
+                readcontents = lambda: self.fileobj.read(2 ** 16)
+                for chunk in iter(readcontents, ''):
+                    out.write(chunk)
+                self.fileobj.close()
 
+        return self.as_json()
+
+    def as_json(self):
         return {
             'label': self.label,
             'metadata': self.metadata,
-            'content': filename
-            }
-
-    def asJson(self):
-        return {
-            'label': self.label,
-            'metadata': self.metadata,
-            'content': self.content
-            }
+            'content': self.filename if self.fileobj else None
+        }
 
 
 def zip_directory(directory, targetfile=None):
