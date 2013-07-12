@@ -12,15 +12,10 @@ class ItemPackager(object):
     Represents a total definition of an item.  Useful for constructing an
     entire item for creating or syncing via the repository API.
     '''
-    def __init__(self,
-                 label=None,
-                 metadata=None,
-                 status=None,
-                 embargo_date=None,
-                 enabled=None,
-                 attachments=None):
+    def __init__(self, label=None, metadata=None, status=None,
+                 embargo_date=None, enabled=None, attachments=None):
         self.label = label
-        self.metadata = metadata
+        self.metadata = metadata or {}
         self.status = status
         self.embargo_date = embargo_date
         self.enabled = enabled
@@ -32,25 +27,8 @@ class ItemPackager(object):
             self.metadata.add_notes('Original title: %s' % self.label)
             self.label = self.label[:252] + '...'
 
-    def create_item(self, collection):
-        self.validate_and_transform()
-        item = collection.items.new()
-        if self.label:
-            item.label = self.label
-        if self.metadata:
-            item.metadata = self.metadata
-        if self.status:
-            item.item_status = self.status
-        if self.embargo_date:
-            item.embargo_date = self.embargo_date
-        if self.enabled:
-            item.item_enabled = self.enabled
-
-        for att_struct in self.attachments:
-            att_struct.create_attachment(item)
-        return item
-
     def as_json(self):
+        self.validate_and_transform()
         return {
             'label': self.label,
             'metadata': self.metadata,
@@ -90,7 +68,7 @@ class AttachmentPackager(object):
 
     def __init__(self, label=None, metadata=None, fileobj=None, filename=None):
         self.label = label
-        self.metadata = metadata
+        self.metadata = metadata or {}
         self.fileobj = fileobj
         if fileobj and not filename:
             name = None
@@ -107,17 +85,6 @@ class AttachmentPackager(object):
             orig_title = 'Original title: %s' % self.label
             self.metadata.setdefault('notes', []).append(orig_title)
             self.label = self.label[:252] + '...'
-
-    def create_attachment(self, item):
-        self.validate_and_transform()
-        att = item.attachments.new()
-        if self.label:
-            att.label = self.label
-        if self.metadata:
-            att.metadata = self.metadata
-        if self.content:
-            att.content = self.content
-        return att
 
     def write_directory(self, directory):
         '''
@@ -140,6 +107,7 @@ class AttachmentPackager(object):
         return self.as_json()
 
     def as_json(self):
+        self.validate_and_transform()
         return {
             'label': self.label,
             'metadata': self.metadata,
