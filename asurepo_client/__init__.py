@@ -61,7 +61,7 @@ class Resource(object):
         self.process(resp)
 
     def options(self, data, **kwargs):
-        resp = self.session.patch(self.url, data=data, **kwargs)
+        resp = self.session.options(self.url, **kwargs)
         self.process(resp)
 
     def process(self, response):
