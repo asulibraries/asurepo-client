@@ -8,10 +8,11 @@ import zipfile
 
 
 class ItemPackager(object):
-    '''
+    """
     Represents a total definition of an item.  Useful for constructing an
     entire item for creating or syncing via the repository API.
-    '''
+
+    """
     def __init__(self, label=None, metadata=None, status=None,
                  embargo_date=None, enabled=None, attachments=None):
         self.label = label
@@ -40,10 +41,11 @@ class ItemPackager(object):
         }
 
     def write_directory(self, directory=None):
-        '''
+        """
         Write this item's manifest and any file attachments into the specified
         directory.
-        '''
+
+        """
         if not directory:
             directory = tempfile.mkdtemp(prefix="package-")
         manifest = self.as_json()
@@ -87,10 +89,11 @@ class AttachmentPackager(object):
             self.label = self.label[:252] + '...'
 
     def write_directory(self, directory):
-        '''
+        """
         Write content file to the given directory and return a dict describing
         the attachment, including the file it was written to.
-        '''
+
+        """
         if self.fileobj:
             outpath = os.path.join(directory, self.filename)
             if os.path.exists(outpath):
@@ -116,10 +119,11 @@ class AttachmentPackager(object):
 
 
 def zip_directory(directory, targetfile=None):
-    '''
+    """
     Walks the contents of directory and adds them to the zipfile named by
     targetfile (or in a temp file if targetfile is not specified).
-    '''
+
+    """
     directory = os.path.abspath(directory)
     if not targetfile:
         fd, targetfile = tempfile.mkstemp(prefix="package-", suffix=".zip")
