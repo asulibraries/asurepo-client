@@ -1,3 +1,4 @@
+import json
 import requests
 
 __version__ = '0.2.0'
@@ -41,7 +42,7 @@ class Resource(object):
         return self.item_class(self.url, resource_id, self.session)
 
     def post(self, data, **kwargs):
-        resp = self.session.post(self.url, data=data, **kwargs)
+        resp = self.session.post(self.url, data=json.dumps(data), **kwargs)
         return self.process(resp)
 
     def get(self, params=None, **kwargs):
@@ -49,20 +50,20 @@ class Resource(object):
         return self.process(resp)
 
     def put(self, data, **kwargs):
-        resp = self.session.put(self.url, data=data, **kwargs)
-        self.process(resp)
+        resp = self.session.put(self.url, data=json.dumps(data), **kwargs)
+        return self.process(resp)
 
     def delete(self, **kwargs):
         resp = self.session.delete(self.url, **kwargs)
-        self.process(resp)
+        return self.process(resp)
 
     def patch(self, data, **kwargs):
-        resp = self.session.patch(self.url, data=data, **kwargs)
-        self.process(resp)
+        resp = self.session.patch(self.url, data=json.dumps(data), **kwargs)
+        return self.process(resp)
 
     def options(self, **kwargs):
         resp = self.session.options(self.url, **kwargs)
-        self.process(resp)
+        return self.process(resp)
 
     def process(self, response):
         """TODO: Maybe do something here. Like wrap HTTP exceptions?"""
