@@ -37,19 +37,19 @@ HTTP Client
     >>> col.get().json()
     {
         "id": 100
-        "details_url": "https://repository.asu.edu/collections/155",
+        "details_url": "https://repository.asu.edu/collections/100",
         "name": "Test Collection",
         "description": "Lots of good stuff in here."
-        "url": "https://repository.asu.edu/api/collections/155"
+        "url": "https://repository.asu.edu/api/collections/100"
         ...
     }
     >>> col.patch({'name': 'Changed'}).json()
     {
         "id": 100,
-        "details_url": "https://repository.asu.edu/collections/155",
+        "details_url": "https://repository.asu.edu/collections/100",
         "name": "Changed",
         "description": "Lots of good stuff in here."
-        "url": "https://repository.asu.edu/api/collections/155"
+        "url": "https://repository.asu.edu/api/collections/100"
         ...
     }
 
