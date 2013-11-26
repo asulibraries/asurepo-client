@@ -82,7 +82,7 @@ class Collection(Resource):
         """
         url = self.url + '/package'
         headers = {'Content-Type': 'application/zip'}
-        return self.session.post(url, package, headers=headers)
+        return self.session.post(url, data=package, headers=headers)
 
 
 class Client(object):

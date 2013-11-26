@@ -14,6 +14,14 @@ class TestResources(unittest.TestCase):
         res = reslist(2)
         self.assertEqual(res.url, TEST_BASE_URL + '/things/2')
 
+    def test_item_class_delegation(self):
+
+        class SubResource(Resource):
+            pass
+
+        res = Resource(TEST_BASE_URL, 'top', Mock(), item_class=SubResource)
+        item_res = res(1)
+        self.assertIsInstance(item_res, SubResource)
 
 class TestClient(unittest.TestCase):
 
@@ -30,7 +38,8 @@ class TestClient(unittest.TestCase):
         self.client.session.post = Mock()
         col.submit_package(package)
         self.client.session.post.assert_called_with(
-            col.url, data=package, headers={'Content-Type': 'application/zip'}
+            col.url + '/package', data=package,
+            headers={'Content-Type': 'application/zip'}
         )
 
 if __name__ == '__main__':
