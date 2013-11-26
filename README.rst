@@ -36,7 +36,7 @@ HTTP Client
     >>> col = client.collections(100)
     >>> col.get().json()
     {
-        "id": 155,
+        "id": 100
         "details_url": "https://repository.asu.edu/collections/155",
         "name": "Test Collection",
         "description": "Lots of good stuff in here."
@@ -45,7 +45,7 @@ HTTP Client
     }
     >>> col.patch({'name': 'Changed'}).json()
     {
-        "id": 155,
+        "id": 100,
         "details_url": "https://repository.asu.edu/collections/155",
         "name": "Changed",
         "description": "Lots of good stuff in here."
