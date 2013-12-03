@@ -90,3 +90,33 @@ packaging ingest format.
         ...
     }
 
+Ingesting Packages
+~~~~~~~~~~~~~~~~~~
+
+Included in the packaging module is the helper class BatchIngest which
+manages submitting a set of packages.
+
+.. code-block:: pycon
+
+    >>> col = client.collections(100)
+    >>> batch = BatchIngest(col, glob('packages/*.zip'))
+    >>> batch.run()
+    >>> batch.successes
+    [
+        ('packages/1.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
+        ('packages/2.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
+        ('packages/3.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
+        ...
+    ]
+    >>> batch.errors
+    [
+        ('packages/5.zip', ConnectionError('network unavailable')),
+        ('packages/6.zip', IOError('file not found'))
+    ]
+    >>> batch.retry_failed(ConnectionError)
+    >>> batch.errors
+    [
+        ('packages/6.zip', IOError('file not found'))
+    ]
+
+

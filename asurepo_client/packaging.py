@@ -55,8 +55,7 @@ class ItemPackager(object):
         json.dump(manifest, open(manifest_path, 'w'))
         return directory
 
-    def write_zip(self, targetfile=None):
-        fd, targetfile = targetfile or tempfile.mkstemp()
+    def write_zip(self, targetfile):
         try:
             packagedir = tempfile.mkdtemp(prefix="package-")
             self.write_directory(packagedir)
@@ -64,6 +63,26 @@ class ItemPackager(object):
         finally:
             shutil.rmtree(packagedir)
         return targetfile
+
+
+def zip_directory(directory, targetfile=None):
+    """
+    Walks the contents of directory and adds them to the zipfile named by
+    targetfile (or in a temp file if targetfile is not specified).
+
+    """
+    directory = os.path.abspath(directory)
+    if not targetfile:
+        fd, targetfile = tempfile.mkstemp(prefix="package-", suffix=".zip")
+        os.close(fd)
+
+    with zipfile.ZipFile(targetfile, 'w', zipfile.ZIP_DEFLATED) as zip:
+        for root, dirs, files in os.walk(directory):
+            for f in files:
+                abspath = os.path.join(root, f)
+                relpath = os.path.relpath(abspath, directory)
+                zip.write(abspath, relpath)
+    return targetfile
 
 
 class AttachmentPackager(object):
@@ -118,21 +137,62 @@ class AttachmentPackager(object):
         }
 
 
-def zip_directory(directory, targetfile=None):
+class BatchIngest(object):
     """
-    Walks the contents of directory and adds them to the zipfile named by
-    targetfile (or in a temp file if targetfile is not specified).
+    Controls submission of a set of zip packages into the given collection.
 
     """
-    directory = os.path.abspath(directory)
-    if not targetfile:
-        fd, targetfile = tempfile.mkstemp(prefix="package-", suffix=".zip")
-        os.close(fd)
 
-    with zipfile.ZipFile(targetfile, 'w', zipfile.ZIP_DEFLATED) as zip:
-        for root, dirs, files in os.walk(directory):
-            for f in files:
-                abspath = os.path.join(root, f)
-                relpath = os.path.relpath(abspath, directory)
-                zip.write(abspath, relpath)
-    return targetfile
+    def __init__(self, collection, packages):
+        """
+        Args:
+            collection: Collection resource obtained from asurepo_client.Client
+            packages: list of paths to the zip packages to submit
+
+        """
+        self.collection = collection
+        self.packages = packages
+        self.errors = []
+        self.successes = []
+
+    def run(self):
+        for zip_path in self.packages:
+            self.ingest(zip_path)
+
+    def retry_failed(self, err_type=Exception):
+        """
+        Helpful when running in a REPL where you have the chance to
+        inspect the errors and make some adjustments, or if there were
+        uncontrollable conditions like network hiccoughs.
+
+        Args:
+            err_type: class of the error type to retry
+
+        """
+        retry = [pack for pack, err in self.errors if isinstance(err, err_type)]
+        self.errors = [
+            (pack, err) for pack, err in self.errors if pack not in retry
+        ]
+        for pack in retry:
+            self.ingest(pack)
+
+    def ingest(self, package_path):
+        """Try to submit the package.
+
+        On success, adds (path, url) tuple to the success list. On any
+        exception, adds (path, traceback) to the errors list.
+
+        """
+        try:
+            with open(package_path, 'rb') as zip_in:
+                resp = self.collection.submit_package(zip_in)
+            resp.raise_for_status()
+            if resp.status_code == 201:
+                loc = resp.headers['location']
+                self.successes.append((package_path, loc))
+            else:
+                raise ValueError(
+                    'Unexpected API status {}'.format(resp.status_code)
+                )
+        except Exception as e:
+            self.errors.append((package_path, e))
