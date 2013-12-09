@@ -93,7 +93,7 @@ class Client(object):
 
     """
 
-    def __init__(self, token, base_url=None):
+    def __init__(self, token, base_url=None, verify_ssl=True):
         """
         This sets up the client-exposed API resources and initializes an
         HTTP session with default/required state.
@@ -107,7 +107,7 @@ class Client(object):
             'Accept': 'application/json',
             'User-Agent': 'asurepo-client v{}'.format(__version__)
         })
-        self.session.verify = False
+        self.session.verify = verify_ssl
         self.collections = self.register_resource(
             'collections', item_class=Collection
         )
