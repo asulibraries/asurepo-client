@@ -1,198 +1,222 @@
 import json
-import os
+from os import path
 import shutil
 import tempfile
-import types
-import uuid
-import zipfile
+
+
+class HasMetadata(dict):
+    """Convenience dict for programmatic building of repo metadata.
+
+    Offers defaultdict-like functionality for accessing list-value elements
+    and helper methods for adding more complex and formatted elements.
+
+    """
+    string_fields = ['created', 'rights']
+    list_fields = [
+        'title',
+        'subject',
+        'description',
+        'extent',
+        'type',
+        'contributor',
+        'language',
+        'notes',
+        'series',
+        'identifier',
+        'citation',
+    ]
+    all_fields = list_fields + string_fields
+
+    def __missing__(self, key):
+        if key in self.list_fields:
+            self[key] = val = []
+            return val
+        raise KeyError(key)
+
+    def __init__(self, **kwargs):
+        """Allow multi-valued fields to be initialized as a single value."""
+        for f in self.list_fields:
+            val = kwargs.pop(f, None)
+            if val is not None and isinstance(val, (str, unicode, dict)):
+                kwargs[f] = [val]
+        super(HasMetadata, self).__init__(**kwargs)
+
+    def add_description(self, val, dtype=None):
+        desc = dict(value=val)
+        if dtype is None:
+            pass
+        elif dtype in ['abstract', 'tableOfContents']:
+            desc['type'] = dtype
+        else:
+            raise ValueError(
+                'Type must be either "abstract" or "tableOfContents".')
+        self['description'].append(desc)
+
+    def add_personal_contributor(self, last, rest, roles=None):
+        self._add_contributor(last, rest, roles)
+
+    def add_institutional_contributor(self, name, roles=None):
+        self._add_contributor(name, None, roles, True)
+
+    def _add_contributor(self, last, rest=None, roles=None, institution=False):
+        cont = dict(last=last)
+        if rest:
+            cont['rest'] = rest
+        if roles:
+            if isinstance(roles, (str, unicode)):
+                roles = [roles]
+            cont['roles'] = roles
+        cont['is_institution'] = institution
+        self['contributor'].append(cont)
+
+    def add_identifier(self, ident, idtype=None):
+        identifier = dict(value=ident)
+        if idtype:
+            identifier['type'] = idtype
+        self['identifier'].append(identifier)
+
+
+class Item(HasMetadata):
+
+    def __missing__(self, key):
+        if key == 'attachments':
+            self[key] = val = []
+            return val
+        return HasMetadata.__missing__(self, key)
+
+    def set_public(self):
+        self['status'] = 'Public'
+
+    def set_private(self):
+        self['status'] = 'Private'
+
+    def enable(self):
+        self['enabled'] = True
+
+    def disable(self):
+        self['enabled'] = False
+
+    def set_embargo_date(self, edate):
+        self['embargo_date'] = edate.isoformat()
+
+    def remove_embargo(self):
+        if 'embargo_date' in self:
+            del self['embargo_date']
+
+
+class Attachment(HasMetadata):
+    OPEN = 'OpenAcccess'
+    ASU = 'ASU'
+    CLOSED = 'ASU'
+
+    def set_file_open(self):
+        self['file_access'] = self.OPEN
+
+    def set_file_asu_only(self):
+        self['file_access'] = self.ASU
+
+    def set_file_closed(self):
+        self['file_access'] = self.CLOSED
+
+    def set_derivatives_open(self):
+        self['derivative_access'] = self.OPEN
+
+    def set_derivatives_asu_only(self):
+        self['derivative_access'] = self.ASU
+
+    def set_derivatives_closed(self):
+        self['derivative_access'] = self.CLOSED
 
 
 class ItemPackager(object):
-    """
-    Represents a total definition of an item.  Useful for constructing an
-    entire item for creating or syncing via the repository API.
+    """Creates a repository package.
 
-    """
-    def __init__(self, label=None, metadata=None, status=None,
-                 embargo_date=None, enabled=None, attachments=None):
-        self.label = label
-        self.metadata = metadata or {}
-        self.status = status
-        self.embargo_date = embargo_date
-        self.enabled = enabled
-        self.attachments = attachments or []
+    Helper class for building a zipfile suitable for submission to a
+    collection's package endpoint. It provides new-item initialization
+    and wraps writing files and the JSON manifest.
 
-    def validate_and_transform(self):
-        # truncate object label if necessary
-        if len(self.label) > 255:
-            self.metadata.add_notes('Original title: %s' % self.label)
-            self.label = self.label[:252] + '...'
+    This must be used as a context manager.
 
-    def as_json(self):
-        self.validate_and_transform()
-        return {
-            'label': self.label,
-            'metadata': self.metadata,
-            'status': self.status,
-            'embargo_date': self.embargo_date.isoformat()
-                            if self.embargo_date else None,
-            'enabled': self.enabled,
-            'attachments': [att.as_json() for att in self.attachments]
-        }
-
-    def write_directory(self, directory=None):
-        """
-        Write this item's manifest and any file attachments into the specified
-        directory.
-
-        """
-        if not directory:
-            directory = tempfile.mkdtemp(prefix="package-")
-        manifest = self.as_json()
-        manifest['attachments'] = [att.write_directory(directory)
-                                   for att in self.attachments]
-        manifest_path = os.path.join(directory, 'manifest.json')
-        json.dump(manifest, open(manifest_path, 'w'))
-        return directory
-
-    def write_zip(self, targetfile):
-        try:
-            packagedir = tempfile.mkdtemp(prefix="package-")
-            self.write_directory(packagedir)
-            return zip_directory(packagedir, targetfile)
-        finally:
-            shutil.rmtree(packagedir)
-        return targetfile
-
-
-def zip_directory(directory, targetfile=None):
-    """
-    Walks the contents of directory and adds them to the zipfile named by
-    targetfile (or in a temp file if targetfile is not specified).
-
-    """
-    directory = os.path.abspath(directory)
-    if not targetfile:
-        fd, targetfile = tempfile.mkstemp(prefix="package-", suffix=".zip")
-        os.close(fd)
-
-    with zipfile.ZipFile(targetfile, 'w', zipfile.ZIP_DEFLATED) as zip:
-        for root, dirs, files in os.walk(directory):
-            for f in files:
-                abspath = os.path.join(root, f)
-                relpath = os.path.relpath(abspath, directory)
-                zip.write(abspath, relpath)
-    return targetfile
-
-
-class AttachmentPackager(object):
-
-    def __init__(self, label=None, metadata=None, fileobj=None, filename=None):
-        self.label = label
-        self.metadata = metadata or {}
-        self.fileobj = fileobj
-        if fileobj and not filename:
-            name = None
-            if (hasattr(fileobj, 'name') and
-                isinstance(fileobj.name, types.StringTypes)):
-                name = os.path.basename(fileobj.name)
-            self.filename = name if name else uuid.uuid4()
-        else:
-            self.filename = filename
-
-    def validate_and_transform(self):
-        # truncate object label if necessary
-        if len(self.label) > 255:
-            orig_title = 'Original title: %s' % self.label
-            self.metadata.setdefault('notes', []).append(orig_title)
-            self.label = self.label[:252] + '...'
-
-    def write_directory(self, directory):
-        """
-        Write content file to the given directory and return a dict describing
-        the attachment, including the file it was written to.
-
-        """
-        if self.fileobj:
-            outpath = os.path.join(directory, self.filename)
-            if os.path.exists(outpath):
-                raise ValueError(
-                    "The file %s already exists in the "
-                    "package directory." % outpath)
-
-            with open(outpath, 'wb') as out:
-                readcontents = lambda: self.fileobj.read(2 ** 16)
-                for chunk in iter(readcontents, ''):
-                    out.write(chunk)
-                self.fileobj.close()
-
-        return self.as_json()
-
-    def as_json(self):
-        self.validate_and_transform()
-        return {
-            'label': self.label,
-            'metadata': self.metadata,
-            'content': self.filename if self.fileobj else None
-        }
-
-
-class BatchIngest(object):
-    """
-    Controls submission of a set of zip packages into the given collection.
+    >>> with ItemPackager() as pack:
+    >>>     item = pack.item
+    >>>     item['title'].append('Main Title')
+    >>>     item['subject'].append('example')
+    >>>     with open('./source/myfile.csv') as attfile:
+    >>>         att = pack.add_attachment(attfile, 'myfile.csv', label='Data')
+    >>>         att.add_description('Tabular data representing...')
+    >>>     pack.write('/tmp/packages/package1')
 
     """
 
-    def __init__(self, collection, packages):
+    def __init__(self, **kwargs):
         """
-        Args:
-            collection: Collection resource obtained from asurepo_client.Client
-            packages: list of paths to the zip packages to submit
+        Any keyword arguments will be used to initialize
+        the Item's initial data/metadata (e.g. title, subject).
 
         """
-        self.collection = collection
-        self.packages = packages
-        self.errors = []
-        self.successes = []
+        self.item = Item(**kwargs)
+        self._working_dir = None
 
-    def run(self):
-        for zip_path in self.packages:
-            self.ingest(zip_path)
+    def __enter__(self):
+        self._working_dir = tempfile.mkdtemp(prefix="package-")
+        return self
 
-    def retry_failed(self, err_type=Exception):
-        """
-        Helpful when running in a REPL where you have the chance to
-        inspect the errors and make some adjustments, or if there were
-        uncontrollable conditions like network hiccoughs.
+    def __exit__(self, ex_type, ex_val, traceback):
+        shutil.rmtree(self._working_dir, True)
+        return False
+
+    def add_attachment(self, filehandle, package_name, **kwargs):
+        """Add an attachment and associated metadata.
 
         Args:
-            err_type: class of the error type to retry
+            filehandle: An open file or file-like.
+            package_name: Name/path within the package.
+            kwargs: Attachment initialization info/metadata e.g. label
+
+        Returns:
+            An Attachement dict which can be used to add more info/metadata.
 
         """
-        retry = [pack for pack, err in self.errors if isinstance(err, err_type)]
-        self.errors = [
-            (pack, err) for pack, err in self.errors if pack not in retry
-        ]
-        for pack in retry:
-            self.ingest(pack)
+        if self._working_dir is None:
+            raise PackageError(
+                'You can only add attachments in the context '
+                'of a `with` statement.')
 
-    def ingest(self, package_path):
-        """Try to submit the package.
+        package_name = package_name.lstrip('/.')
+        label = kwargs.get('label')
+        if not label:
+            kwargs['label'] = path.basename(package_name)
 
-        On success, adds (path, url) tuple to the success list. On any
-        exception, adds (path, traceback) to the errors list.
+        att = Attachment(**kwargs)
+        outpath = path.join(self._working_dir, package_name)
+
+        if path.exists(outpath):
+            msg = '{} already exists in the package directory.'.format(outpath)
+            raise PackageError(msg)
+
+        with open(outpath, 'wb') as out:
+            readcontents = lambda: filehandle.read(2 ** 16)
+            for chunk in iter(readcontents, ''):
+                out.write(chunk)
+
+        att['content'] = package_name
+        self.item['attachments'].append(att)
+        return att
+
+    def write(self, target):
+        """Write the zip package.
+
+        The argument `target` is the path and base name of the zipfile
+        to be created. The .zip extension will be appended. Given
+        `/tmp/packages/package1` the resulting ZIP file will be located at
+        `/tmp/packages/package1.zip`.
 
         """
-        try:
-            with open(package_path, 'rb') as zip_in:
-                resp = self.collection.submit_package(zip_in)
-            resp.raise_for_status()
-            if resp.status_code == 201:
-                loc = resp.headers['location']
-                self.successes.append((package_path, loc))
-            else:
-                raise ValueError(
-                    'Unexpected API status {}'.format(resp.status_code)
-                )
-        except Exception as e:
-            self.errors.append((package_path, e))
+        mpath = path.join(self._working_dir, 'manifest.json')
+        with open(mpath, 'w') as mani:
+            json.dump(self.item, mani)
+        return shutil.make_archive(target, 'zip', self._working_dir)
+
+
+class PackageError(Exception):
+    pass

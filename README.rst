@@ -63,21 +63,16 @@ packaging ingest format.
 
     from asurepo_client.packaging import ItemPackager
 
-    packager = ItemPackager(
-        label='Test Package Item',
-        metadata={
-            'subject': ['Packaging']
-        }
-    )
+    with ItemPackager('packages/package_name') as pack:
+        item = pack.item
+        item['title'].append('Test Package Item')
+        item['subject'] = ['Packaging', 'Testing']
+        with open('source/att.txt') as att:
+            att = pack.add_item(att, label='My Attachment')
+            att.add_identifier('555/jjj')
 
-    packager.attachments.append(AttachmentPackager(
-        label='Example Image',
-        fileobj=open('test.jpg') # your filelike will be closed
-    ))
-
-    zipfile = packager.write_zip('/tmp/item.zip')
-    collection = client.collections(100)
-    response = collection.submit_package(zipfile)
+        collection = client.collections(100)
+        response = collection.submit_package(pack.path)
 
 .. code-block:: pycon
 
@@ -86,37 +81,6 @@ packaging ingest format.
 
     >>> response.json()
     {
-        label: 'Test Package Item'
+        title: ['Test Package Item'],
         ...
     }
-
-Ingesting Packages
-~~~~~~~~~~~~~~~~~~
-
-Included in the packaging module is the helper class BatchIngest which
-manages submitting a set of packages.
-
-.. code-block:: pycon
-
-    >>> col = client.collections(100)
-    >>> batch = BatchIngest(col, glob('packages/*.zip'))
-    >>> batch.run()
-    >>> batch.successes
-    [
-        ('packages/1.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
-        ('packages/2.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
-        ('packages/3.zip', 'http://repository.asu.edu/api/items/<NEW_ID>')
-        ...
-    ]
-    >>> batch.errors
-    [
-        ('packages/5.zip', ConnectionError('network unavailable')),
-        ('packages/6.zip', IOError('file not found'))
-    ]
-    >>> batch.retry_failed(ConnectionError)
-    >>> batch.errors
-    [
-        ('packages/6.zip', IOError('file not found'))
-    ]
-
-

@@ -26,8 +26,7 @@ class Resource(object):
         us to get nested resources. E.g.
 
         >>> list_of_items = client.items
-        >>> list_of_items.url
-        https://base.url/api/items
+        >>> list_of_items.url https://base.url/api/items
         >>> individual_item = client.items(45)
         >>> individual_item.url
         https://base.url/api/items/45
@@ -72,18 +71,11 @@ class Resource(object):
 
 class Collection(Resource):
 
-    def submit_package(self, package):
-        """Create a new item in this collection.
-
-        TODO: link to package example/documentation
-
-        Args:
-            package: An open file-like in the Repository's zip-file format.
-
-        """
+    def submit_package(self, package_path):
         url = self.url + '/package'
         headers = {'Content-Type': 'application/zip'}
-        return self.session.post(url, data=package, headers=headers)
+        with open(package_path, 'rb') as package:
+            return self.session.post(url, data=package, headers=headers)
 
 
 class Client(object):
@@ -93,13 +85,13 @@ class Client(object):
 
     """
 
-    def __init__(self, token, base_url=None, verify_ssl=True):
+    def __init__(self, token, host=None, verify_ssl=True):
         """
         This sets up the client-exposed API resources and initializes an
         HTTP session with default/required state.
 
         """
-        self.base_url = base_url or 'https://repository.asu.edu/api'
+        self.base_url = 'https://{}/api'.format(host or 'repository.asu.edu')
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': 'application/json',
