@@ -63,16 +63,17 @@ packaging ingest format.
 
     from asurepo_client.packaging import ItemPackager
 
-    with ItemPackager('packages/package_name') as pack:
+    with ItemPackager() as pack:
         item = pack.item
         item['title'].append('Test Package Item')
         item['subject'] = ['Packaging', 'Testing']
-        with open('source/att.txt') as att:
-            att = pack.add_item(att, label='My Attachment')
+        with open('source/att.txt') as attfile:
+            att = pack.add_attachment(attfile, 'att.txt', label='My Attachment')
             att.add_identifier('555/jjj')
+        pack_path = pack.write('/tmp/packages/package1')
 
         collection = client.collections(100)
-        response = collection.submit_package(pack.path)
+        response = collection.submit_package(pack_path)
 
 .. code-block:: pycon
 
