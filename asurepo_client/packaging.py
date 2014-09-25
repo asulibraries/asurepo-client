@@ -1,5 +1,5 @@
 import json
-from os import path
+from os import path, makedirs
 import shutil
 import tempfile
 
@@ -188,7 +188,11 @@ class ItemPackager(object):
             kwargs['label'] = path.basename(package_name)
 
         att = Attachment(**kwargs)
+
         outpath = path.join(self._working_dir, package_name)
+        dirs = path.dirname(outpath)
+        if not path.exists(dirs):
+            makedirs(dirs)
 
         if path.exists(outpath):
             msg = '{} already exists in the package directory.'.format(outpath)
