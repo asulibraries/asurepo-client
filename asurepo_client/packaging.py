@@ -39,6 +39,8 @@ class HasMetadata(dict):
             val = kwargs.pop(f, None)
             if val is not None and isinstance(val, (str, unicode, dict)):
                 kwargs[f] = [val]
+            elif isinstance(val, list):
+                kwargs[f] = val
         super(HasMetadata, self).__init__(**kwargs)
 
     def add_description(self, val, dtype=None):
