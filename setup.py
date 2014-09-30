@@ -1,7 +1,6 @@
 import setuptools
 from setuptools.command.test import test as TestCommand
 import sys
-from asurepo_client import __version__ as version
 
 
 class PyTest(TestCommand):
@@ -24,7 +23,7 @@ class PyTest(TestCommand):
 
 setuptools.setup(
     name='asurepo-client',
-    version=version,
+    version='0.3.0',
     packages=setuptools.find_packages(),
     install_requires=['requests>=2.0'],
     tests_require=['mock>=1.0', 'pytest'],
