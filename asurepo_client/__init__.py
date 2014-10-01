@@ -95,7 +95,7 @@ class Client(object):
             'Content-Type': 'application/json',
             'Authorization': 'Token {}'.format(token),
             'Accept': 'application/json',
-            'User-Agent': 'asurepo-client v{}'.format(__version__)
+            'User-Agent': 'asurepo-client'
         })
         self.session.verify = verify_ssl
         self.collections = self.register_resource(

@@ -23,7 +23,7 @@ class PyTest(TestCommand):
 
 setuptools.setup(
     name='asurepo-client',
-    version='0.3.0',
+    version='0.3.1',
     packages=setuptools.find_packages(),
     install_requires=['requests>=2.0'],
     tests_require=['mock>=1.0', 'pytest'],
