@@ -1,7 +1,8 @@
 import json
-from os import path, makedirs
+from os import path, makedirs, walk
 import shutil
 import tempfile
+import zipfile
 
 
 class HasMetadata(dict):
@@ -221,7 +222,15 @@ class ItemPackager(object):
         mpath = path.join(self._working_dir, 'manifest.json')
         with open(mpath, 'w') as mani:
             json.dump(self.item, mani)
-        return shutil.make_archive(target, 'zip', self._working_dir)
+
+        directory = path.abspath(self._working_dir)
+        with zipfile.ZipFile(target, 'w', allowZip64=True) as zip:
+            for root, dirs, files in walk(directory):
+                for f in files:
+                    abspath = path.join(root, f)
+                    relpath = path.relpath(abspath, directory)
+                    zip.write(abspath, relpath)
+        return target
 
 
 class PackageError(Exception):
