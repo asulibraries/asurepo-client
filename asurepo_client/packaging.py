@@ -203,9 +203,8 @@ class ItemPackager(object):
 
         with open(outpath, 'wb') as out:
             readcontents = lambda: filehandle.read(2 ** 16)
-            for chunk in iter(readcontents, ''):
+            for chunk in iter(readcontents, b''):
                 out.write(chunk)
-
         att['content'] = package_name
         self.item['attachments'].append(att)
         return att
